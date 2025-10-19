@@ -192,6 +192,21 @@ bundle exec rspec
 bundle exec rspec --format documentation
 ```
 
+### Code Style
+
+This project uses RuboCop for code style enforcement. To check and fix style issues:
+
+```bash
+# Check for style violations
+bundle exec rubocop
+
+# Auto-fix violations where possible
+bundle exec rubocop --auto-correct
+
+# Auto-fix all violations (including unsafe ones)
+bundle exec rubocop --auto-correct-all
+```
+
 ### Building the Gem
 
 ```bash
