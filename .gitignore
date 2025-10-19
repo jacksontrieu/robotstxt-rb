@@ -56,3 +56,6 @@ build-iPhoneSimulator/
 # .rubocop-https?--*
 
 .vscode/
+
+.rspec_status
+.rspec
