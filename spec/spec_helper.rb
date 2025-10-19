@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+require "simplecov"
+SimpleCov.start
+SimpleCov.minimum_coverage 95
+
 require "bundler/setup"
 require "robotstxt-rb"
 
