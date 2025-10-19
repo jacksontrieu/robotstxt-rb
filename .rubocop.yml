@@ -1,0 +1,52 @@
+# RuboCop configuration for robotstxt-rb
+# Using standard Ruby community defaults
+
+AllCops:
+  TargetRubyVersion: 2.7
+  NewCops: enable
+  Exclude:
+    - 'vendor/**/*'
+    - '**/*.gemspec'
+
+# Load plugins
+plugins:
+  - rubocop-rspec
+
+# Style configurations
+Style/Documentation:
+  Enabled: false
+
+Style/FrozenStringLiteralComment:
+  Enabled: true
+  EnforcedStyle: always
+
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+
+Style/TrailingCommaInArguments:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: comma
+
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: comma
+
+# RSpec specific configurations
+RSpec/ExampleLength:
+  Max: 10
+
+RSpec/MultipleExpectations:
+  Max: 5
+
+RSpec/NestedGroups:
+  Max: 4
+
+# Disable problematic cops
+RSpec/ContextWording:
+  Enabled: false
+
+# Disable file naming for gem files that need to match gem name
+Naming/FileName:
+  Exclude:
+    - 'lib/robotstxt-rb.rb'

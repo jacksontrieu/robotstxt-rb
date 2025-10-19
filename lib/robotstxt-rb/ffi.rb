@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 require "ffi"
 
 module RobotstxtRb
@@ -9,7 +11,7 @@ module RobotstxtRb
       when /darwin.*arm64/ then "darwin-arm64"
       when /darwin/        then "darwin-x86_64"
       when /linux.*aarch64/ then "linux-arm64"
-      when /linux/         then "linux-x86_64"
+      when /linux/ then "linux-x86_64"
       else
         raise "Unsupported platform: #{RUBY_PLATFORM}"
       end
@@ -35,7 +37,7 @@ module RobotstxtRb
     ffi_lib shared_lib_path
 
     # C signatures
-    attach_function :robots_is_allowed, [:string, :string, :string], :int
+    attach_function :robots_is_allowed, %i[string string string], :int
     attach_function :robots_is_valid,   [:string], :int
 
     # Ruby-friendly wrappers
