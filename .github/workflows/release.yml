@@ -125,17 +125,24 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p release-assets
-          # Copy each platform’s artifact into release-assets and into the gem-native tree
-          for dir in $(find all-natives -maxdepth 2 -type d -name 'linux-*' -o -name 'darwin-*'); do
-            plat=$(basename "$dir")
-            mkdir -p "release-assets/${plat}"
-            mkdir -p "${{ env.NATIVE_DIR }}/${plat}"
-            if [[ "$plat" == linux-* ]]; then
-              cp "$dir"/librobotstxt_ffi.so "release-assets/${plat}/"
-              cp "$dir"/librobotstxt_ffi.so "${{ env.NATIVE_DIR }}/${plat}/"
-            else
-              cp "$dir"/librobotstxt_ffi.dylib "release-assets/${plat}/"
-              cp "$dir"/librobotstxt_ffi.dylib "${{ env.NATIVE_DIR }}/${plat}/"
+          # Copy each platform's artifact into release-assets and into the gem-native tree
+          for artifact_dir in all-natives/*/; do
+            if [[ -d "$artifact_dir" ]]; then
+              # Find the platform directory inside the artifact
+              for platform_dir in "$artifact_dir"dist/*/; do
+                if [[ -d "$platform_dir" ]]; then
+                  plat=$(basename "$platform_dir")
+                  mkdir -p "release-assets/${plat}"
+                  mkdir -p "${{ env.NATIVE_DIR }}/${plat}"
+                  if [[ "$plat" == linux-* ]]; then
+                    cp "$platform_dir"librobotstxt_ffi.so "release-assets/${plat}/"
+                    cp "$platform_dir"librobotstxt_ffi.so "${{ env.NATIVE_DIR }}/${plat}/"
+                  else
+                    cp "$platform_dir"librobotstxt_ffi.dylib "release-assets/${plat}/"
+                    cp "$platform_dir"librobotstxt_ffi.dylib "${{ env.NATIVE_DIR }}/${plat}/"
+                  fi
+                fi
+              done
             fi
           done
           # Create a combined checksum manifest
