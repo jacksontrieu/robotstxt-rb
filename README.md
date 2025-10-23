@@ -2,7 +2,7 @@
 
 [![Gem Version](https://badge.fury.io/rb/robotstxt-rb.svg)](https://badge.fury.io/rb/robotstxt-rb)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Build Status](https://github.com/jacksontrieu/robotstxt-rb/workflows/CI/badge.svg)](https://github.com/jacksontrieu/robotstxt-rb/actions)
+[![build-natives-and-publish-gem](https://github.com/jacksontrieu/robotstxt-rb/actions/workflows/release.yml/badge.svg)](https://github.com/jacksontrieu/robotstxt-rb/actions/workflows/release.yml)
 [![Ruby Version](https://img.shields.io/badge/ruby-%3E%3D%202.0-brightgreen.svg)](https://www.ruby-lang.org/)
 
 A Ruby gem providing native bindings to Google's official C++ robots.txt parser and matcher. Enables fast, standards-compliant robots.txt parsing and URL access checking directly from Ruby.
