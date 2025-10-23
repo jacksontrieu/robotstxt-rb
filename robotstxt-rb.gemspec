@@ -16,5 +16,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rubocop", "~> 1.81"
   spec.add_development_dependency "rubocop-rspec", "~> 3.7"
 
-  spec.add_development_dependency "simplecov", require: false
+  spec.add_development_dependency "simplecov"
 end
