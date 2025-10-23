@@ -1,0 +1,170 @@
+name: build-natives-and-publish-gem
+
+on:
+  push:
+    tags: ["v*"]     # run when you push a version tag
+  workflow_dispatch:  # or run manually
+
+permissions:
+  contents: write     # needed to create/upload GitHub Releases
+
+env:
+  # Where we stage natives in the gem tree (keep in sync with your FFI loader)
+  NATIVE_DIR: lib/robotstxt-rb/native
+  ROBOTSTXT_REPO: google/robotstxt
+  WRAPPER_DIR_IN_GEM: .github/ffi          # where ffi_wrapper.* + BUILD.bazel live
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout gem repo
+        uses: actions/checkout@v4
+
+      - name: Checkout robots C++ repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ROBOTSTXT_REPO }}
+          path: robotstxt
+
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl unzip build-essential
+          curl -L https://github.com/bazelbuild/bazelisk/releases/download/v1.20.0/bazelisk-linux-amd64 -o bazelisk
+          chmod +x bazelisk && sudo mv bazelisk /usr/local/bin/bazelisk
+          ruby -v
+
+      - name: Add FFI wrapper into robots repo
+        run: |
+          rsync -a ${{ env.WRAPPER_DIR_IN_GEM }}/ robotstxt/ffi/
+
+      - name: Build shared library (.so)
+        working-directory: robotstxt
+        run: |
+          bazelisk build //ffi:robotstxt_ffi
+          mkdir -p ../${{ env.NATIVE_DIR }}/linux-$(uname -m)
+          cp bazel-bin/ffi/librobotstxt_ffi.so ../${{ env.NATIVE_DIR }}/linux-$(uname -m)/
+
+      - name: Generate checksums (Linux)
+        run: |
+          mkdir -p dist/linux-$(uname -m)
+          cp ${{ env.NATIVE_DIR }}/linux-$(uname -m)/librobotstxt_ffi.so dist/linux-$(uname -m)/
+          (cd dist && find . -type f -print0 | xargs -0 shasum -a 256 > SHA256SUMS.txt)
+
+      - name: Upload native (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ runner.arch }}
+          path: |
+            dist/linux-*/librobotstxt_ffi.so
+            dist/SHA256SUMS.txt
+
+  build-macos:
+    strategy:
+      matrix:
+        os: [macos-13, macos-14]  # 13=x86_64 runner, 14=arm64 runner
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout gem repo
+        uses: actions/checkout@v4
+
+      - name: Checkout robots C++ repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.ROBOTSTXT_REPO }}
+          path: robotstxt
+
+      - name: Install prerequisites
+        run: |
+          brew update
+          brew install bazelisk
+
+      - name: Add FFI wrapper into robots repo
+        run: |
+          rsync -a ${{ env.WRAPPER_DIR_IN_GEM }}/ robotstxt/ffi/
+
+      - name: Build shared library (.dylib)
+        working-directory: robotstxt
+        run: |
+          bazelisk build //ffi:robotstxt_ffi
+          ARCH=$(uname -m)
+          mkdir -p ../${{ env.NATIVE_DIR }}/darwin-${ARCH}
+          cp bazel-bin/ffi/librobotstxt_ffi.dylib ../${{ env.NATIVE_DIR }}/darwin-${ARCH}/
+          # Make install name relative so it loads from gem path
+          install_name_tool -id @loader_path/librobotstxt_ffi.dylib ../${{ env.NATIVE_DIR }}/darwin-${ARCH}/librobotstxt_ffi.dylib
+
+      - name: Generate checksums (macOS)
+        run: |
+          ARCH=$(uname -m)
+          mkdir -p dist/darwin-${ARCH}
+          cp ${{ env.NATIVE_DIR }}/darwin-${ARCH}/librobotstxt_ffi.dylib dist/darwin-${ARCH}/
+          (cd dist && find . -type f -print0 | xargs -0 shasum -a 256 > SHA256SUMS.txt)
+
+      - name: Upload native (artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: darwin-${{ runner.arch }}
+          path: |
+            dist/darwin-*/librobotstxt_ffi.dylib
+            dist/SHA256SUMS.txt
+
+  release-and-publish:
+    needs: [build-linux, build-macos]
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout gem repo
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./all-natives
+
+      - name: Prepare release assets & copy into gem tree
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+          # Copy each platform’s artifact into release-assets and into the gem-native tree
+          for dir in $(find all-natives -maxdepth 2 -type d -name 'linux-*' -o -name 'darwin-*'); do
+            plat=$(basename "$dir")
+            mkdir -p "release-assets/${plat}"
+            mkdir -p "${{ env.NATIVE_DIR }}/${plat}"
+            if [[ "$plat" == linux-* ]]; then
+              cp "$dir"/librobotstxt_ffi.so "release-assets/${plat}/"
+              cp "$dir"/librobotstxt_ffi.so "${{ env.NATIVE_DIR }}/${plat}/"
+            else
+              cp "$dir"/librobotstxt_ffi.dylib "release-assets/${plat}/"
+              cp "$dir"/librobotstxt_ffi.dylib "${{ env.NATIVE_DIR }}/${plat}/"
+            fi
+          done
+          # Create a combined checksum manifest
+          (cd release-assets && find . -type f -print0 | xargs -0 shasum -a 256 > SHA256SUMS.txt)
+
+      - name: Create or update GitHub Release for the tag
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-assets/**/librobotstxt_ffi.so
+            release-assets/**/librobotstxt_ffi.dylib
+            release-assets/SHA256SUMS.txt
+          generate_release_notes: true
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Build gem
+        run: |
+          gem build *.gemspec
+          ls -l *.gem
+
+      - name: Publish to RubyGems
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}
+        run: |
+          printf -- "---\n:rubygems_api_key: %s\n" "$RUBYGEMS_API_KEY" > ~/.gem/credentials
+          chmod 0600 ~/.gem/credentials
+          gem push *.gem

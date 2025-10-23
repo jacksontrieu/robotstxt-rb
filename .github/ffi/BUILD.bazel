@@ -1,0 +1,19 @@
+cc_library(
+    name = "robotstxt_ffi_headers",
+    hdrs = ["ffi_wrapper.h"],
+    visibility = ["//visibility:public"],
+)
+
+cc_binary(
+    name = "robotstxt_ffi",
+    srcs = ["ffi_wrapper.cc"],
+    linkshared = 1,
+    copts = [
+        "-std=c++17",
+    ],
+    deps = [
+        "//:robots",                    # Main robots library
+        "//:reporting_robots",          # For the RobotsParsingReporter
+    ],
+    visibility = ["//visibility:public"],
+)
